@@ -1,31 +1,30 @@
 import express from 'express';
-import jwt from 'jsonwebtoken'; // Para gerar o token
-/import usuarioService from '../services/user.service.js'
+import { createUser, authenticateUser } from '../services/user.service.js';
+import authenticateToken from '../middleware/authMiddleware.js' ;
 const router = express.Router();
 
-// Rota de login
-router.post('/login', async (req, res) => {
-  const { email, senha } = req.body;
-
+router.post('/register', async (req, res) => {
   try {
-    // Verifica as credenciais do usuário
-    const usuario = await usuarioService.verificarCredenciais(email, senha);
-    if (!usuario) {
-      return res.status(401).json({ message: 'Credenciais inválidas' });
-    }
-
-    // Se as credenciais forem válidas, gere o token JWT
-    const token = jwt.sign(
-      { id: usuario.id, email: usuario.email }, // Payload do token (ID e email)
-      'seuSegredoSuperSecreto', // Chave secreta para assinar o token
-      { expiresIn: '1h' } // Expiração do token
-    );
-
-    // Envia o token na resposta
-    res.status(200).json({ token });
+    const { username, password } = req.body;
+    const user = await createUser(username, password);
+    res.status(201).json(user);
   } catch (error) {
-    res.status(500).json({ message: 'Erro no servidor', error: error.message });
+    res.status(400).json({ error: error.message });
   }
+});
+
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const token = await authenticateUser(username, password);
+    res.json({ token });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.get('/profile', authenticateToken, (req, res) => {
+  res.json({ message: 'Acesso permitido', user: req.user });
 });
 
 export default router;
